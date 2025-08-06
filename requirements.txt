@@ -9,5 +9,5 @@ mapclassify==2.8.1
 matplotlib==3.10.5
 Pillow==11.3.0
 jenkspy==0.4.1
-gunicorn
+
 
