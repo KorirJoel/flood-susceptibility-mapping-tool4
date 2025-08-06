@@ -1,0 +1,56 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: url('https://images.unsplash.com/photo-1691515182613-4b6604049b5b?q=80&w=1033&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') 
+    no-repeat center center fixed;
+  background-size: cover;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+  backdrop-filter: brightness(60%);
+}
+
+h1 {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  font-size: 2.5rem;
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  font-style: italic;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+h2 {
+  font-size: 1.8rem;
+  font-weight: 300;
+  margin-top: 0;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.button {
+  padding: 0.8rem 2rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #004d66;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.button:hover {
+  background-color: rgba(255, 255, 255, 0.7);
+}

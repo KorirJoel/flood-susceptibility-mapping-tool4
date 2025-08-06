@@ -1,0 +1,72 @@
+/* Base styling for the webpage */
+body {
+  margin: 0;
+  padding: 30px;
+  font-family: 'Segoe UI', sans-serif;
+  background: url('https://images.unsplash.com/photo-1567654007013-3d64876fe8dd?q=80&w=1470&auto=format&fit=crop') no-repeat center center fixed;
+  background-size: cover;
+  color: rgb(114, 0, 89);
+}
+
+/* Styling for the input section */
+.input-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+#fileInput, #outputName {
+  margin-right: 10px;
+}
+
+#runBtn {
+  padding: 8px 16px;
+  font-weight: bold;
+  background-color: rgb(114, 0, 89);
+  border: none;
+  border-radius: 5px;
+  color: #e2ebee;
+  cursor: pointer;
+}
+
+#statusMsg {
+  margin-left: 20px;
+  font-weight: bold;
+  color: darkblue;
+}
+
+/* Map display area */
+#map {
+  height: 500px;
+  margin-top: 30px;
+  border: 2px solid #800f76;
+  border-radius: 10px;
+}
+
+/* Styling the list of selected file names */
+#fileList {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+#fileList li {
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

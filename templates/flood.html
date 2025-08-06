@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flood Risk Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS for map display -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/flood.css') }}">
+</head>
+
+<body>
+
+  <!-- Title and instructions -->
+  <h1>Flood Risk Management Module</h1>
+  <p>Select exactly <strong>14 .tif raster files</strong> representing flood factors and provide a filename for the output map.</p>
+
+  <!-- Input section for file selection and output filename -->
+  <div class="input-section">
+    <label for="fileInput">Select Raster Files:</label>
+    <input type="file" id="fileInput" multiple accept=".tif" />
+
+    <label for="outputName">Output Name:</label>
+    <input type="text" id="outputName" placeholder="fsm_output" />
+
+    <button id="runBtn">Run Prediction</button>
+    <span id="statusMsg"></span>
+
+    <button id="downloadBtn" style="display:none; margin-left: 15px; padding: 8px 16px; font-weight: bold; background-color: darkgreen; border: none; border-radius: 5px; color: white; cursor: pointer;">
+      Download FSM
+    </button>
+  </div>
+
+  <!-- Display selected file names -->
+  <ul id="fileList"></ul>
+
+  <!-- Map container -->
+  <div id="map"></div>
+
+  <!-- Leaflet JS for map functionality -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+  <!-- External JavaScript -->
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+</body>
+</html>
