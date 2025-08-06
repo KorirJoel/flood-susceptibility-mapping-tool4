@@ -8,3 +8,4 @@ scikit-learn
 mapclassify
 matplotlib
 Pillow
+gunicorn
