@@ -1,3 +1,4 @@
+# Import required libraries
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import os
@@ -5,121 +6,118 @@ import numpy as np
 import pandas as pd
 import rasterio
 from rasterio.enums import Resampling
-import joblib
 from sklearn.ensemble import RandomForestClassifier
 import tempfile
 from matplotlib.colors import ListedColormap, BoundaryNorm
 import matplotlib
-matplotlib.use('Agg')  # Use non-GUI backend to avoid display issues
+matplotlib.use('Agg')  # Use non-interactive backend for headless environments
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
-import jenkspy
-from jenkspy import JenksNaturalBreaks
-import mapclassify
-import numpy as np
-           
-# Initialize Flask app and enable CORS
+import mapclassify  # For Jenks Natural Breaks classification
+
+# Initialize Flask app and enable CORS for cross-origin requests
 app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
 
-# Ensure 'static' folder exists for storing PNG outputs
+# Ensure static folder exists for storing generated images
 STATIC_DIR = os.path.join(os.getcwd(), 'static')
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-# Define the expected order of 14 flood factor rasters
+# Ordered list of expected raster layers (by name without extension)
 flood_factor_order = [
     'twi', 'tri', 'tpi', 'spi', 'soil_type', 'slope', 'profile_cu',
     'ppt', 'plan_curva', 'ndvi', 'lulc', 'elevation', 'dtoS', 'aspect'
 ]
 
-# Load the pre-trained Random Forest model
-model = joblib.load('rf_flood_model.pkl')
-
+# Route for home page
 @app.route('/')
 def index():
-    # Renders the home page
     return render_template('index.html')
 
+# Route for flood prediction UI page
 @app.route('/flood')
 def flood():
-    # Renders the flood prediction page
     return render_template('flood.html')
 
+# Utility function to generate a base64-encoded GeoTIFF from array and profile
 def generate_tif(profile, classified_array):
-    from io import BytesIO
-    import rasterio
     from rasterio.io import MemoryFile
-
     profile.update({
         'dtype': rasterio.uint8,
         'count': 1,
         'compress': 'lzw',
         'nodata': 0
     })
-
     memfile = MemoryFile()
     with memfile.open(**profile) as dataset:
         dataset.write(classified_array, 1)
-
     tif_bytes = memfile.read()
-    tif_base64 = base64.b64encode(tif_bytes).decode('utf-8')
-    return tif_base64
+    return base64.b64encode(tif_bytes).decode('utf-8')
 
+# Route for flood susceptibility prediction
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Get uploaded files and output file name from form
+        # Get uploaded raster files and CSV training file from request
         uploaded_files = request.files.getlist("files[]")
+        csv_file = request.files.get("csv_file")
         output_name = request.form.get("output_name", "fsm_overlay").strip()
 
-        if not uploaded_files:
-            return jsonify({"error": "No files uploaded"}), 400
+        # Ensure required files are provided
+        if not uploaded_files or not csv_file:
+            return jsonify({"error": "Missing raster files or CSV file"}), 400
+
+        # Load training data from CSV
+        train_df = pd.read_csv(csv_file)
+        X_train = train_df[flood_factor_order]
+        y_train = train_df['status']
+
+        # Train the Random Forest model on CSV data
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
+        model.fit(X_train, y_train)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Save uploaded files temporarily
+            # Save uploaded raster files to temporary directory
             saved_paths = []
             for file in uploaded_files:
                 save_path = os.path.join(temp_dir, file.filename)
                 file.save(save_path)
                 saved_paths.append(save_path)
 
-            # Create a dict mapping filename (without extension) to file path
+            # Create dictionary mapping raster names to file paths
             file_dict = {
-                os.path.splitext(os.path.basename(f))[0]: f
-                for f in saved_paths
+                os.path.splitext(os.path.basename(f))[0]: f for f in saved_paths
             }
 
             rasters = []
             transform = None
             dtoS_profile = None
 
-            # Load rasters in the expected order
+            # Read raster layers in the expected order
             for factor in flood_factor_order:
                 if factor not in file_dict:
                     return jsonify({'error': f'Missing raster for: {factor}'}), 400
 
                 with rasterio.open(file_dict[factor]) as src:
                     arr = src.read(1, resampling=Resampling.bilinear).astype(np.float32)
-                    arr[arr == src.nodata] = np.nan  # Mask nodata values
+                    arr[arr == src.nodata] = np.nan  # Handle nodata values
                     rasters.append(arr)
-
-                    # Save transform and profile from one layer
-                    if factor == 'dtoS':
+                    if factor == 'dtoS':  # Save one profile for output
                         dtoS_profile = src.profile
                         transform = src.transform
 
-            # Stack all layers along the last dimension
+            # Stack rasters into a 3D array (rows, cols, bands)
             raster_stack = np.stack(rasters, axis=-1)
 
-            # Identify valid (non-nan) pixels
+            # Mask to identify valid (non-NaN) pixels
             valid_mask = ~np.any(np.isnan(raster_stack), axis=-1)
-            valid_pixels = raster_stack[valid_mask]
 
-            # Prepare data for prediction
+            # Extract valid pixels for prediction
+            valid_pixels = raster_stack[valid_mask]
             df_predict = pd.DataFrame(valid_pixels, columns=flood_factor_order)
 
-            # Batch prediction for memory efficiency
+            # Predict probabilities in batches for memory efficiency
             def batch_predict(X, batch_size=100000):
                 return np.concatenate([
                     model.predict_proba(X[i:i + batch_size])[:, 1]
@@ -128,31 +126,26 @@ def predict():
 
             probabilities = batch_predict(df_predict)
 
-            # Fill probability map
+            # Initialize full-size probability map and assign values
             prob_map = np.full(valid_mask.shape, np.nan, dtype=np.float32)
             prob_map[valid_mask] = probabilities
 
-            # --- Reclassify using Jenks Natural Breaks --
-            # Use mapclassify to compute Natural Breaks on valid data
-            nb = mapclassify.NaturalBreaks(y=probabilities, k=5)  # k=number of classes
-
-            # Use the computed bin edges to digitize the probabilities
-            breaks = nb.bins  # upper bounds of each class
+            # Classify predicted probabilities using Jenks Natural Breaks
+            nb = mapclassify.NaturalBreaks(y=probabilities, k=5)
+            breaks = nb.bins
             classes = np.digitize(probabilities, bins=breaks)
 
-            # Create classified output with 0 as NoData
+            # Assign classified values (1–5) to valid pixels
             classified = np.full(valid_mask.shape, 0, dtype=np.uint8)
+            classified[valid_mask] = classes + 1  # Add 1 so classes range 1–5
 
-            # Assign class values 1 to 5 (Very Low to Very High)
-            classified[valid_mask] = classes + 1
-
-            # Compute geographic bounds from raster transform
+            # Get map bounds in lat/lon from transform
             height, width = classified.shape
             west, north = transform * (0, 0)
             east, south = transform * (width, height)
-            bounds = [[south, west], [north, east]]  # Format for Leaflet
+            bounds = [[south, west], [north, east]]
 
-            # Generate unique output PNG filename
+            # Determine unique PNG file name to avoid overwrite
             base_name = output_name.rstrip('.png')
             final_name = f"{base_name}.png"
             png_path = os.path.join(STATIC_DIR, final_name)
@@ -162,36 +155,35 @@ def predict():
                 png_path = os.path.join(STATIC_DIR, final_name)
                 count += 1
 
-            # Define class color map for visualization
+            # Mask and visualize the classified map
             masked_data = np.ma.masked_equal(classified, 0)
             class_colors = [
-                (0.0, 0.0, 0.5, 1.0),   # Dark Blue - Very Low
-                (0.0, 0.5, 0.0, 1.0),   # Green - Low
-                (1.0, 1.0, 0.0, 1.0),   # Yellow - Moderate
-                (1.0, 0.5, 0.0, 1.0),   # Orange - High
-                (1.0, 0.0, 0.0, 1.0),   # Red - Very High
+                (0.0, 0.0, 0.5, 1.0),  # Very Low
+                (0.0, 0.5, 0.0, 1.0),  # Low
+                (1.0, 1.0, 0.0, 1.0),  # Moderate
+                (1.0, 0.5, 0.0, 1.0),  # High
+                (1.0, 0.0, 0.0, 1.0),  # Very High
             ]
             cmap = ListedColormap(class_colors)
             norm = BoundaryNorm([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], cmap.N)
 
-            # Plot and save classified flood susceptibility map
+            # Plot classified map
             plt.figure(figsize=(10, 8))
             plt.axis('off')
             plt.imshow(masked_data, cmap=cmap, norm=norm)
 
+            # Save plot to PNG and encode as base64
             img_buf = BytesIO()
             plt.savefig(img_buf, format='png', transparent=True, bbox_inches='tight', pad_inches=0)
             plt.close()
             img_buf.seek(0)
-
-            # Encode the PNG image to base64 so it can be displayed in HTML
             img_base64 = base64.b64encode(img_buf.read()).decode('utf-8')
             image_data_uri = f"data:image/png;base64,{img_base64}"
-            
-            # Generate base64-encoded GeoTIFF
+
+            # Generate encoded GeoTIFF
             tif_base64 = generate_tif(dtoS_profile, classified)
 
-            # Return the base64 image URI and bounds
+            # Return base64 image + bounds + tif data to frontend
             return jsonify({
                 'flood_map_url': image_data_uri,
                 'bounds': bounds,
@@ -199,10 +191,8 @@ def predict():
             })
 
     except Exception as e:
-        # Return any errors that occur
         return jsonify({'error': str(e)}), 500
 
-
-# Run the app
+# Run the app locally
 if __name__ == '__main__':
     app.run(debug=True)
