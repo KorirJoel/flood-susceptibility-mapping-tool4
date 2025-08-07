@@ -6,5 +6,6 @@ rasterio
 scikit-learn
 joblib
 matplotlib
+gunicorn
 
 
