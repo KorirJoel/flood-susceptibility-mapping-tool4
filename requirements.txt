@@ -7,5 +7,6 @@ scikit-learn
 joblib
 matplotlib
 gunicorn
+mapclassify
 
 
