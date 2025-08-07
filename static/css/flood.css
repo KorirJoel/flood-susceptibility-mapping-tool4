@@ -70,3 +70,7 @@ label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+#csvInput {
+  margin-right: 10px;
+}
