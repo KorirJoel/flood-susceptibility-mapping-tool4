@@ -19,20 +19,26 @@
   <p>Select exactly <strong>14 .tif raster files</strong> representing flood factors and provide a filename for the output map.</p>
 
   <!-- Input section for file selection and output filename -->
-  <div class="input-section">
-    <label for="fileInput">Select Raster Files:</label>
-    <input type="file" id="fileInput" multiple accept=".tif" />
+  <!-- Input section for file selection and output filename -->
+<div class="input-section">
+  <label for="fileInput">Select Raster Files:</label>
+  <input type="file" id="fileInput" multiple accept=".tif" />
 
-    <label for="outputName">Output Name:</label>
-    <input type="text" id="outputName" placeholder="fsm_output" />
+  <!-- New CSV input -->
+  <label for="csvInput">Import CSV File:</label>
+  <input type="file" id="csvInput" accept=".csv" />
 
-    <button id="runBtn">Run Prediction</button>
-    <span id="statusMsg"></span>
+  <label for="outputName">Output Name:</label>
+  <input type="text" id="outputName" placeholder="fsm_output" />
 
-    <button id="downloadBtn" style="display:none; margin-left: 15px; padding: 8px 16px; font-weight: bold; background-color: darkgreen; border: none; border-radius: 5px; color: white; cursor: pointer;">
-      Download FSM
-    </button>
-  </div>
+  <button id="runBtn">Run Prediction</button>
+  <span id="statusMsg"></span>
+
+  <button id="downloadBtn" style="display:none; margin-left: 15px; padding: 8px 16px; font-weight: bold; background-color: darkgreen; border: none; border-radius: 5px; color: white; cursor: pointer;">
+    Download FSM
+  </button>
+</div>
+
 
   <!-- Display selected file names -->
   <ul id="fileList"></ul>
