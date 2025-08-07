@@ -1,3 +1,4 @@
+gunicorn
 Flask
 flask-cors
 numpy
@@ -6,7 +7,9 @@ rasterio
 scikit-learn
 joblib
 matplotlib
-gunicorn
 mapclassify
+gunicorn
+
+
 
 
